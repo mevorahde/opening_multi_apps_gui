@@ -6,25 +6,37 @@ import tkinter as tk
 from tkinter import filedialog
 import os
 import tkinter.messagebox
+apps = []
 
 
-if os.path.isfile('save.txt'):
-    with open('save.txt', 'r') as f:
-        temp_apps = f.read()
-        temp_apps = temp_apps.split(',')
-        apps = [x for x in temp_apps if x.strip()]
+def read_file():
+    if os.path.isfile('save.txt'):
+        with open('save.txt', 'r') as f:
+            temp_apps = f.read()
+            temp_apps = temp_apps.split(',')
+            apps = [x for x in temp_apps if x.strip()]
+
+    for app in apps:
+        label = tk.Label(frame, text=app, bg="gray")
+        label.pack()
 
 
 def add_app():
+    global apps
+    read_file()
     for widget in frame.winfo_children():
         widget.destroy()
 
     file_name = filedialog.askopenfilename(initialdir="/", title="Select File",
                                            filetypes=(("executables", "*.exe"), ("all files", "*.*")))
-    # if file_name == "":
-    #     pass
-    apps.append(file_name)
-    # if len(apps) != 0:
+    if not file_name:
+        if os.path.isfile('save.txt'):
+            with open('save.txt', 'r') as f:
+                temp_apps = f.read()
+                temp_apps = temp_apps.split(',')
+                apps = [x for x in temp_apps if x.strip()]
+    else:
+        apps.append(file_name)
     for app in apps:
         label = tk.Label(frame, text=app, bg="gray")
         label.pack()
@@ -35,13 +47,13 @@ def run_apps():
         for app in apps:
             os.startfile(app)
     else:
-        tkinter.messagebox.showerror ("No Apps Selected", "No Apps have been selected to run.")
+        tkinter.messagebox.showerror("No Apps Selected", "No Apps have been selected to run.")
+
 
 root = tk.Tk()
 root.resizable(0, 0)
 root.title("Morning Apps Starter")
 root.wm_iconbitmap("favicon.ico")
-apps = []
 
 
 canvas = tk.Canvas(root, height=700, width=700, bg="#263D42")
@@ -64,10 +76,13 @@ open_file.pack(side="left", padx=100, pady=10)
 run_apps = tk.Button(root, text="Run Apps", padx=15, pady=5, fg="white", bg="#263D42", command=run_apps)
 run_apps.pack(side="right", padx=100, pady=10)
 
+
 for app in apps:
-    label = tk.Label(frame, text=app)
+    label = tk.Label(frame, text=app, bg="gray")
     label.pack()
 
+
+read_file()
 root.config(menu=menu_bar)
 root.mainloop()
 
