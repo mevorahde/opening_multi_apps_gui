@@ -30,11 +30,7 @@ def add_app():
     file_name = filedialog.askopenfilename(initialdir="/", title="Select File",
                                            filetypes=(("executables", "*.exe"), ("all files", "*.*")))
     if not file_name:
-        if os.path.isfile('save.txt'):
-            with open('save.txt', 'r') as f:
-                temp_apps = f.read()
-                temp_apps = temp_apps.split(',')
-                apps = [x for x in temp_apps if x.strip()]
+        read_file()
     else:
         apps.append(file_name)
     for app in apps:
