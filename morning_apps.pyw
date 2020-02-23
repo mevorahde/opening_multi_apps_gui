@@ -1,3 +1,9 @@
+"""
+Idea based of the tutorial by Dev Ed
+YouTube URL: https://youtu.be/jE-SpRI3K5g
+Enhancements made by @mevorahde
+V1.0 Created on Sat Feb 22 2020
+"""
 import tkinter as tk
 from tkinter import filedialog
 import os
@@ -14,7 +20,9 @@ def start_file():
             apps = [x for x in temp_apps if x.strip()]
 
     for app in apps:
-        label = list_box.insert(tk.END, app)
+        list_box.insert(tk.END, app)
+        list_box.pack()
+
         # list_box.insert(tk.END, apps[app])
 
 
@@ -44,7 +52,7 @@ def modify_file():
 
 def add_app():
     global apps
-    for widget in frame.winfo_children():
+    for widget in list_box.winfo_children():
         widget.destroy()
 
     file_name = filedialog.askopenfilename(initialdir="/", title="Select File",
@@ -53,12 +61,10 @@ def add_app():
         read_file()
     else:
         apps.append(file_name)
-    for i in range(len(apps)):
-        # print(i)
-        # print(apps[i])
-        list_box.insert(i, apps[i])
-        #  label.pack()
-        # label = list_box.insert(tk.END, *apps)
+        list_box.insert(tk.END, file_name)
+        list_box.pack()
+    write_file()
+    read_file()
 
 
 def deselect_app():
@@ -119,7 +125,7 @@ menu_bar.add_cascade(label="File", menu=file_menu)
 frame = tk.Frame(root, bg="white")
 frame.place(relwidth=0.8, relheight=0.8, relx=0.1, rely=0.1)
 
-list_box = tk.Listbox(frame, width=640, height=640)
+list_box = tk.Listbox(frame, width=640, height=640, activestyle="none")
 list_box.pack()
 
 open_file = tk.Button(root, text="Open File", padx=15, pady=5, fg="white", bg="#263D42", command=add_app)
