@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=75,<81"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "morning-app-launcher"
+version = "2.0.0.dev0"
+description = "A small Windows desktop launcher for a user-selected set of applications."
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = { file = "LICENSE" }
+authors = [{ name = "Morning App Launcher contributors" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Win32 (MS Windows)",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.14,<2",
+  "PyYAML>=6.0,<7",
+  "pytest>=8.3,<9",
+  "ruff>=0.9,<1",
+  "tomli>=2.0,<3; python_version < '3.11'",
+]
+release = [
+  "pyinstaller>=6.11,<7",
+]
+
+[project.gui-scripts]
+morning-app-launcher = "morning_app_launcher.app:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"morning_app_launcher.resources" = [
+  "morning-app-launcher.ico",
+  "morning-app-launcher.png",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src", "packaging"]
+strict = true
+warn_unreachable = true
