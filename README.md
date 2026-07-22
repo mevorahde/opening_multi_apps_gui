@@ -70,11 +70,12 @@ Only the concrete Windows launcher adapter can call `os.startfile`. Paths are va
 launch, operating-system failures are translated into safe application errors, and tests inject
 fakes instead of invoking the real adapter.
 
-The icon is retained from the earlier project as a package resource with its bytes unchanged.
-Its ownership and licensing provenance have not been established; this project makes no claim
-about either. Icon-loading failure is nonfatal.
+The Morning App Launcher icon is an original project asset created specifically for this project
+with OpenAI image generation under the project owner's direction. The application prefers the
+multi-resolution ICO on Windows and falls back to the transparent PNG when needed. Icon-loading
+failure is cosmetic and never prevents startup.
 
 ## License
 
-The source code is available under the [MIT License](LICENSE). This license statement does not
-assert ownership of the bundled icon.
+The source code is available under the [MIT License](LICENSE). No separate asset license is
+declared for the original project icon.

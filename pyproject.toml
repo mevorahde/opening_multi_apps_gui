@@ -39,7 +39,10 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-"morning_app_launcher.resources" = ["favicon.ico"]
+"morning_app_launcher.resources" = [
+  "morning-app-launcher.ico",
+  "morning-app-launcher.png",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tkinter as tk
 from importlib import resources
 from pathlib import Path
@@ -30,9 +31,23 @@ def build_controller() -> ApplicationController:
 
 def _apply_icon(root: tk.Tk) -> None:
     try:
-        icon = resources.files("morning_app_launcher.resources").joinpath("favicon.ico")
+        resource_root = resources.files("morning_app_launcher.resources")
+    except Exception:
+        return
+    if os.name == "nt":
+        try:
+            icon = resource_root.joinpath("morning-app-launcher.ico")
+            with resources.as_file(icon) as icon_path:
+                root.iconbitmap(default=str(icon_path))  # type: ignore[no-untyped-call]
+            return
+        except Exception:
+            pass
+    try:
+        icon = resource_root.joinpath("morning-app-launcher.png")
         with resources.as_file(icon) as icon_path:
-            root.iconbitmap(default=str(icon_path))  # type: ignore[no-untyped-call]
+            photo = tk.PhotoImage(master=root, file=str(icon_path))
+        root.iconphoto(True, photo)
+        root._morning_app_launcher_icon = photo  # type: ignore[attr-defined]
     except Exception:
         # The icon is cosmetic; startup must not depend on resource or Tk icon support.
         return
