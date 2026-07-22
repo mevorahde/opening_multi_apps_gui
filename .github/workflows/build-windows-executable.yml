@@ -1,0 +1,59 @@
+name: Build Windows executable
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install bounded release dependencies
+        run: python -m pip install -e ".[release]"
+      - name: Check dependency consistency
+        run: python -m pip check
+      - name: Build unsigned windowed executable
+        shell: pwsh
+        run: |
+          $icon = (Resolve-Path "src/morning_app_launcher/resources/morning-app-launcher.ico").Path
+          $source = (Resolve-Path "src").Path
+          $entry = (Resolve-Path "packaging/windows_entry.py").Path
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --onefile `
+            --windowed `
+            --name MorningAppLauncher `
+            --icon $icon `
+            --collect-data morning_app_launcher `
+            --paths $source `
+            --distpath release-output `
+            --workpath build/pyinstaller `
+            --specpath build/pyinstaller `
+            $entry
+      - name: Generate SHA-256 checksum
+        shell: pwsh
+        run: |
+          $executable = "release-output\MorningAppLauncher.exe"
+          $checksum = "release-output\MorningAppLauncher.exe.sha256"
+          $hash = (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath $checksum -Value "$hash  MorningAppLauncher.exe" -Encoding ascii -NoNewline
+      - name: Upload unsigned executable and checksum
+        uses: actions/upload-artifact@v6
+        with:
+          name: MorningAppLauncher-windows-unsigned
+          path: |
+            release-output/MorningAppLauncher.exe
+            release-output/MorningAppLauncher.exe.sha256
+          if-no-files-found: error

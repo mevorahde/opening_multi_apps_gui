@@ -1,42 +1,53 @@
 # Morning App Launcher
 
-Morning App Launcher is a small Windows desktop utility for maintaining and opening a
-user-selected group of applications. It retains the original Tkinter workflow while separating
-the GUI, use cases, persistence, and operating-system launch behavior.
+Morning App Launcher is a compact Windows desktop utility for keeping a short, reusable list of
+applications and opening the right set at the start of the day. It replaces a repetitive manual
+routine with a privacy-conscious Tkinter workflow that remains easy to inspect and test.
 
-## Status
+![Morning App Launcher showing a harmless notepad++ example in the Ready state](docs/images/morning-app-launcher.png)
 
-This branch is a modernization foundation. It supports Python 3.10 through 3.13 on Windows.
-Tkinter is supplied by the Python installation; the application has no third-party runtime
-dependencies.
+## Features
 
-## Development
+- Add and remove multiple applications at once.
+- See friendly application names with `Ready` or `Missing` status.
+- Open selected ready applications or every ready application.
+- Continue a batch when one application is missing or fails to open.
+- Store versioned configuration with atomic writes and safe legacy migration.
+- Keep imports side-effect-free and operating-system launching behind an injectable boundary.
+- Record rotating operational events without logging application paths or configuration contents.
+- Use a responsive, keyboard-accessible Tkinter interface.
 
-```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\python.exe -m pytest
-.\.venv\Scripts\python.exe -m ruff check src tests
-.\.venv\Scripts\python.exe -m mypy
+## Engineering highlights
+
+- **Layered design:** domain models, controller/use cases, storage, presentation, GUI composition,
+  and Windows process launching are separate modules.
+- **Safe boundaries:** only the concrete Windows adapter calls `os.startfile`; tests use fakes and
+  explicitly prevent the real launcher from running.
+- **Reliable persistence:** versioned JSON, same-directory temporary files, `fsync`, atomic
+  replacement, schema validation, and non-destructive migration protect local state.
+- **Privacy by design:** friendly names are shown in the UI while operational logs contain only
+  predefined event classifications and integer counts.
+- **Release hygiene:** Windows CI spans every supported Python version, dependencies are bounded,
+  packaging policy is tested, and executable builds are manual, unsigned artifacts.
+
+## Architecture
+
+```text
+Tkinter MainWindow
+      │
+WindowPresenter ── presentation state and command routing
+      │
+ApplicationController ── add/remove/status/batch-launch use cases
+      ├── JsonApplicationStore ── versioned JSON and atomic writes
+      ├── WindowsApplicationLauncher ── the sole os.startfile boundary
+      └── OperationalEventLogger ── rotating classifications and counts
 ```
 
-Run the application only when you intend to open its GUI:
+The package uses a `src` layout under `src/morning_app_launcher`. `app.py` is the composition root;
+importing it does not create a Tk root, enter `mainloop`, read user configuration, or launch a
+process. The GUI starts only through the guarded `main()` entry point.
 
-```powershell
-.\.venv\Scripts\morning-app-launcher.exe
-```
-
-Importing `morning_app_launcher` or its modules does not create a window or launch an
-application.
-
-## Desktop workflow
-
-The responsive application list shows friendly names and a `Ready` or `Missing` status. You can
-add multiple files, select multiple entries, remove stale entries, open selected ready entries,
-open all ready entries, and refresh status without restarting. Missing entries remain removable
-but cannot be launched. Batch launch results report counts without exposing full paths.
-
-Keyboard shortcuts:
+## Keyboard shortcuts
 
 - `Enter`: open selected ready entries
 - `Delete`: request removal of selected entries
@@ -45,35 +56,90 @@ Keyboard shortcuts:
 - `F5`: refresh status
 - `Escape`: clear the current selection; native dialogs also support cancellation
 
-## Configuration and migration
+## Installation from source
 
-Configuration is versioned JSON stored below `%LOCALAPPDATA%\MorningAppLauncher`. If
-`LOCALAPPDATA` is unavailable, the application uses the equivalent per-user Windows local
-application-data location.
+Morning App Launcher supports Python 3.10 through 3.13 on Windows. Tkinter is supplied by the
+Python installation, and the application has no third-party runtime dependencies.
 
-On first start, when no JSON configuration exists, the launcher looks for the legacy ignored
-`save.txt` in the current working directory. It de-duplicates entries, writes JSON atomically,
-and leaves the legacy file untouched. A failed migration never deletes or changes the legacy
-file. Malformed or unsupported JSON is reported safely and is never overwritten automatically.
-Stored application paths are not printed or logged.
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
 
-Operational logs rotate below the same per-user application-data directory. They contain only
-predefined event classifications and integer counts—never complete application paths or
-configuration contents. Logging is fail-open: setup, write, rotation, or close failures do not
-prevent startup or normal operation.
+Run the GUI only when you intend to use the desktop application:
 
-Both `save.txt` and local JSON configuration are excluded from Git.
+```powershell
+.\.venv\Scripts\morning-app-launcher.exe
+```
 
-## Safety and platform behavior
+Use **Add applications** to select local files. Missing entries stay visible so they can be
+removed, but they are never passed to the Windows launcher.
 
-Only the concrete Windows launcher adapter can call `os.startfile`. Paths are validated before
-launch, operating-system failures are translated into safe application errors, and tests inject
-fakes instead of invoking the real adapter.
+## Configuration and legacy migration
 
-The Morning App Launcher icon is an original project asset created specifically for this project
-with OpenAI image generation under the project owner's direction. The application prefers the
-multi-resolution ICO on Windows and falls back to the transparent PNG when needed. Icon-loading
-failure is cosmetic and never prevents startup.
+The primary configuration file is:
+
+```text
+%LOCALAPPDATA%\MorningAppLauncher\config.json
+```
+
+If `LOCALAPPDATA` is unavailable, the application falls back to the equivalent per-user Windows
+local application-data directory. The JSON document is versioned and stores the executable paths
+selected by the local user. It must never be committed to source control.
+
+On first start, when JSON configuration does not exist, the application looks for the legacy
+ignored `save.txt` in the current working directory. Migration de-duplicates entries, writes JSON
+atomically, and always leaves the legacy file unchanged. Failed migration, malformed JSON, and
+unsupported schema versions are reported without silently overwriting user data.
+
+## Privacy and security model
+
+Saved executable paths remain local user configuration. Morning App Launcher does not transmit
+them, print them, or include them in operational logs. Rotating logs live below the same per-user
+application-data directory and contain only predefined event names and integer counts. Logging is
+fail-open: setup, write, rotation, and close failures do not prevent normal operation.
+
+The process-launch boundary is intentionally narrow but still powerful: `os.startfile` asks
+Windows to open a user-selected local file with the current user's permissions. The application
+does not sandbox processes, scan files for malware, verify publisher signatures, or replace normal
+Windows security controls. See [SECURITY.md](SECURITY.md) for reporting and boundary details.
+
+## Development and testing
+
+Install the declared development tools, then run the same gates as CI:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m compileall -q src packaging
+.\.venv\Scripts\python.exe -m ruff check src tests packaging
+.\.venv\Scripts\python.exe -m mypy
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Tests isolate storage and GUI presentation logic, replace the Windows launcher with fakes, reject
+real `os.startfile` calls, and verify that imports do not create a GUI. CI runs these checks on
+Windows with Python 3.10, 3.11, 3.12, and 3.13.
+
+## Windows executable artifact
+
+The manual **Build Windows executable** GitHub Actions workflow builds one windowed
+`MorningAppLauncher.exe`, creates a SHA-256 checksum beside it, and uploads only those two files as
+a workflow artifact. It does not publish a GitHub Release.
+
+The executable is **unsigned**. Windows SmartScreen may warn before opening it. The workflow does
+not perform code signing, and the project does not claim bit-for-bit reproducible binaries.
+
+For a local packaging experiment, install the separate bounded release tools with
+`.[release]`. Never commit generated executables, checksums, specifications, build directories, or
+PyInstaller caches.
+
+## Project artwork
+
+The Morning App Launcher icon is original project artwork created specifically for this project
+with OpenAI image generation under the project owner's direction. Windows prefers the
+multi-resolution ICO; Tk falls back to the transparent PNG if needed. Icon-loading failures are
+cosmetic and never prevent startup.
 
 ## License
 

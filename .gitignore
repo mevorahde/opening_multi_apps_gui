@@ -19,6 +19,8 @@ dist/
 *.exe
 *.msi
 *.spec
+*.sha256
+release-output/
 
 # Logs
 *.log
@@ -37,4 +39,3 @@ Thumbs.db
 save.txt
 config.json
 MorningAppLauncher/
-
