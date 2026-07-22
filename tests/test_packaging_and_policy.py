@@ -19,6 +19,17 @@ BUILD_WORKFLOW = ROOT / ".github" / "workflows" / "build-windows-executable.yml"
 SCREENSHOT = ROOT / "docs" / "images" / "morning-app-launcher.png"
 
 
+def _machine_path_pattern() -> re.Pattern[str]:
+    backslash = chr(92)
+    path_separator = "[" + re.escape(backslash + "/") + "]"
+    drive_root = r"(?<![A-Za-z0-9])[A-Za-z]:" + path_separator
+    drive_path = drive_root + r"[^\s\"']+"
+    unc_root = re.escape(backslash) * 2
+    unc_segment = "[^" + re.escape(backslash) + r"\s]+"
+    unc_path = unc_root + unc_segment + re.escape(backslash) + unc_segment
+    return re.compile("|".join((drive_path, unc_path)))
+
+
 def _load_yaml(path: Path) -> dict[str, Any]:
     document = yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
     assert isinstance(document, dict)
@@ -174,6 +185,19 @@ def test_tracked_tree_excludes_local_private_and_generated_files() -> None:
 
 
 def test_tracked_text_has_no_absolute_machine_or_network_paths() -> None:
+    machine_path = _machine_path_pattern()
+    backslash = chr(92)
+    drive_home = "C:" + backslash + "Users" + backslash + "example-user"
+    absolute_windows = "D:" + backslash + "Program Files" + backslash + "Example"
+    network_share = backslash + backslash + "server" + backslash + "share"
+
+    assert machine_path.search(drive_home)
+    assert machine_path.search(absolute_windows)
+    assert machine_path.search(network_share)
+    assert machine_path.search("docs/images/example.png") is None
+    assert machine_path.search("docs" + backslash + "images" + backslash + "example.png") is None
+    assert machine_path.search("https://example.com/downloads/tool") is None
+
     result = subprocess.run(
         ["git", "ls-files"],
         cwd=ROOT,
@@ -188,7 +212,7 @@ def test_tracked_text_has_no_absolute_machine_or_network_paths() -> None:
         if path.suffix.lower() not in text_suffixes or not path.is_file():
             continue
         text = path.read_text(encoding="utf-8")
-        if re.search(r"[A-Za-z]:\\Users\\|\\\\[^\\\s]+\\[^\s]+", text):
+        if machine_path.search(text):
             findings.append(relative)
 
     assert findings == []
