@@ -50,7 +50,7 @@ jobs:
           $hash = (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant()
           Set-Content -LiteralPath $checksum -Value "$hash  MorningAppLauncher.exe" -Encoding ascii -NoNewline
       - name: Upload unsigned executable and checksum
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: MorningAppLauncher-windows-unsigned
           path: |
