@@ -11,16 +11,19 @@ from .controller import ApplicationController
 from .errors import ApplicationError
 from .gui.main_window import MainWindow
 from .launcher import WindowsApplicationLauncher
+from .operational_logging import create_operational_logger
 from .storage import JsonApplicationStore, LegacyConfigurationMigrator, user_configuration_path
 
 LEGACY_CONFIGURATION_FILENAME = "save.txt"
 
 
 def build_controller() -> ApplicationController:
-    store = JsonApplicationStore(user_configuration_path())
+    configuration_path = user_configuration_path()
+    store = JsonApplicationStore(configuration_path)
     migrator = LegacyConfigurationMigrator(Path.cwd() / LEGACY_CONFIGURATION_FILENAME, store)
     migrator.migrate()
-    controller = ApplicationController(store, WindowsApplicationLauncher())
+    event_logger = create_operational_logger(configuration_path.parent / "logs")
+    controller = ApplicationController(store, WindowsApplicationLauncher(), event_logger)
     controller.load()
     return controller
 

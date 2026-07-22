@@ -11,8 +11,9 @@ from morning_app_launcher.errors import (
     InvalidSelection,
 )
 from morning_app_launcher.models import Application
+from morning_app_launcher.operational_logging import OperationalEvent
 
-from .fakes import FakeLauncher, FakeStore
+from .fakes import FakeEventLogger, FakeLauncher, FakeStore
 
 
 def make_controller() -> tuple[ApplicationController, FakeStore, FakeLauncher]:
@@ -69,7 +70,10 @@ def test_remove_rejects_invalid_selection() -> None:
 
 def test_launch_one_and_all_use_only_injected_launcher(tmp_path: Path) -> None:
     controller, store, launcher = make_controller()
-    applications = [Application(tmp_path / "one.exe"), Application(tmp_path / "two.exe")]
+    paths = [tmp_path / "one.exe", tmp_path / "two.exe"]
+    for path in paths:
+        path.touch()
+    applications = [Application(path) for path in paths]
     store.applications = applications
     controller.load()
 
@@ -85,3 +89,88 @@ def test_launch_empty_list_is_safe() -> None:
     with pytest.raises(InvalidSelection):
         controller.launch_all()
     assert launcher.launched == []
+
+
+def test_statuses_use_friendly_names_and_ready_missing_states(tmp_path: Path) -> None:
+    ready_path = tmp_path / "Ready Tool.exe"
+    ready_path.touch()
+    missing_path = tmp_path / "Missing Tool.exe"
+    store = FakeStore([Application(ready_path), Application(missing_path)])
+    controller = ApplicationController(store, FakeLauncher())
+    controller.load()
+
+    statuses = controller.list_statuses()
+
+    assert [(status.name, status.ready) for status in statuses] == [
+        ("Ready Tool", True),
+        ("Missing Tool", False),
+    ]
+
+
+def test_add_many_handles_success_duplicates_and_invalid_paths(tmp_path: Path) -> None:
+    existing = tmp_path / "existing.exe"
+    existing.touch()
+    added = tmp_path / "added.exe"
+    added.touch()
+    store = FakeStore([Application(existing)])
+    controller = ApplicationController(store, FakeLauncher())
+    controller.load()
+
+    summary = controller.add_many(
+        [existing, added, added, tmp_path / "missing.exe", Path("relative.exe")]
+    )
+
+    assert (summary.added, summary.duplicates, summary.invalid) == (1, 2, 2)
+    assert controller.list_applications() == (Application(existing), Application(added))
+
+
+def test_remove_many_removes_all_selected_in_one_save(tmp_path: Path) -> None:
+    applications = [Application(tmp_path / f"app-{index}.exe") for index in range(4)]
+    store = FakeStore(applications)
+    controller = ApplicationController(store, FakeLauncher())
+    controller.load()
+
+    assert controller.remove_many([3, 1, 1]) == 2
+    assert controller.list_applications() == (applications[0], applications[2])
+    assert len(store.save_calls) == 1
+
+
+def test_partial_launch_continues_after_missing_and_failure(tmp_path: Path) -> None:
+    ready = tmp_path / "ready.exe"
+    ready.touch()
+    failed = tmp_path / "failed.exe"
+    failed.touch()
+    missing = tmp_path / "missing.exe"
+
+    class PartialLauncher:
+        def __init__(self) -> None:
+            self.calls: list[Application] = []
+
+        def launch(self, application: Application) -> None:
+            self.calls.append(application)
+            if application.path == failed:
+                raise OSError("simulated")
+
+    launcher = PartialLauncher()
+    store = FakeStore([Application(failed), Application(missing), Application(ready)])
+    event_logger = FakeEventLogger()
+    controller = ApplicationController(store, launcher, event_logger)
+    controller.load()
+
+    summary = controller.launch_ready()
+
+    assert (summary.requested, summary.succeeded, summary.missing, summary.failed) == (3, 1, 1, 1)
+    assert launcher.calls == [Application(failed), Application(ready)]
+
+
+def test_repeated_controller_close_closes_logger_once() -> None:
+    event_logger = FakeEventLogger()
+    controller = ApplicationController(FakeStore(), FakeLauncher(), event_logger)
+
+    controller.close()
+    controller.close()
+
+    assert event_logger.close_calls == 1
+    assert [event for event, _counts in event_logger.events].count(
+        OperationalEvent.APPLICATION_CLOSED
+    ) == 1

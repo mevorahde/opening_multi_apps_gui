@@ -29,6 +29,22 @@ Run the application only when you intend to open its GUI:
 Importing `morning_app_launcher` or its modules does not create a window or launch an
 application.
 
+## Desktop workflow
+
+The responsive application list shows friendly names and a `Ready` or `Missing` status. You can
+add multiple files, select multiple entries, remove stale entries, open selected ready entries,
+open all ready entries, and refresh status without restarting. Missing entries remain removable
+but cannot be launched. Batch launch results report counts without exposing full paths.
+
+Keyboard shortcuts:
+
+- `Enter`: open selected ready entries
+- `Delete`: request removal of selected entries
+- `Ctrl+O`: add applications
+- `Ctrl+A`: select all entries
+- `F5`: refresh status
+- `Escape`: clear the current selection; native dialogs also support cancellation
+
 ## Configuration and migration
 
 Configuration is versioned JSON stored below `%LOCALAPPDATA%\MorningAppLauncher`. If
@@ -40,6 +56,11 @@ On first start, when no JSON configuration exists, the launcher looks for the le
 and leaves the legacy file untouched. A failed migration never deletes or changes the legacy
 file. Malformed or unsupported JSON is reported safely and is never overwritten automatically.
 Stored application paths are not printed or logged.
+
+Operational logs rotate below the same per-user application-data directory. They contain only
+predefined event classifications and integer counts—never complete application paths or
+configuration contents. Logging is fail-open: setup, write, rotation, or close failures do not
+prevent startup or normal operation.
 
 Both `save.txt` and local JSON configuration are excluded from Git.
 

@@ -28,6 +28,8 @@ def test_imports_create_no_gui_and_launch_nothing(monkeypatch: pytest.MonkeyPatc
         "morning_app_launcher.storage",
         "morning_app_launcher.launcher",
         "morning_app_launcher.controller",
+        "morning_app_launcher.operational_logging",
+        "morning_app_launcher.gui.presentation",
         "morning_app_launcher.gui.main_window",
         "morning_app_launcher.app",
     ]

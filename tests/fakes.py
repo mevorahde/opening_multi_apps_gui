@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from morning_app_launcher.models import Application
+from morning_app_launcher.operational_logging import OperationalEvent
 
 
 @dataclass
@@ -29,3 +30,15 @@ class FakeLauncher:
 
     def launch(self, application: Application) -> None:
         self.launched.append(application)
+
+
+@dataclass
+class FakeEventLogger:
+    events: list[tuple[OperationalEvent, dict[str, int]]] = field(default_factory=list)
+    close_calls: int = 0
+
+    def event(self, event: OperationalEvent, **counts: int) -> None:
+        self.events.append((event, counts))
+
+    def close(self) -> None:
+        self.close_calls += 1
